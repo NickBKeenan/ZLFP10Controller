@@ -42,6 +42,7 @@ class ZLFP10Controller
   
 public:
     settingsHolder FCUSettings;
+    int lastTempPin;
 private:
     short lastTempSetting=0; // used for deflutter
     int lastSpeedSetting = 0; // used for deflutter

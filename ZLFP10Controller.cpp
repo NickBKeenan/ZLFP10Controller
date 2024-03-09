@@ -84,9 +84,11 @@ void ZLFP10Controller::ReadSettings() {
 // fan setting is holdingData[2];
 
     // fluttering detected, try to adjust setpoints
-    if(lastTempSetting !=0 && FCUSettings.RoomTemp != lastTempSetting && millis()> nextAdjustmentTime && nextAdjustmentTime > 0)
+    if(lastTempSetting !=0 && FCUSettings.RoomTemp != lastTempSetting)// && millis()> nextAdjustmentTime && nextAdjustmentTime > 0)
     {
         DeFlutter();
+        SetFanSpeed(lastSpeedSetting, lastTempSetting);
+
     }
 
 }
@@ -103,7 +105,8 @@ void ZLFP10Controller::SetFanSpeed(int fanspeed, int targettemp)
   
   lastTempSetting=targettemp;
   lastSpeedSetting = fanspeed;
-  nextAdjustmentTime = millis() + ADJUSTMENT_INTERVAL*1000;
+  lastTempPin = newSetting;
+  nextAdjustmentTime = millis() + (unsigned long)ADJUSTMENT_INTERVAL*1000;
 }
 
 
@@ -233,6 +236,7 @@ void ZLFP10Controller::Calibrate(bool isHeating, int FCUSetTemp)
   if(goodTries==3)
   {
     DebugStream->println("Done Calibrating");
+    
   }
   else
   {
@@ -253,10 +257,10 @@ void ZLFP10Controller::DeFlutter()
   // reportedRoomTemp  -- what the unit is reporting
   // lastTempSetting -- what we set the temp to
     DebugStream->println();
-  DebugStream->println("DEFluttering. Settemp=");
-  DebugStream->println(lastTempSetting);
-  DebugStream->println(" reported temp=");
-  DebugStream->println(FCUSettings.RoomTemp);
+  DebugStream->print("DEFluttering. Settemp=");
+  DebugStream->print(lastTempSetting);
+  DebugStream->print(" reported temp=");
+  DebugStream->print(FCUSettings.RoomTemp);
   DebugStream->println();
 
 
@@ -267,8 +271,9 @@ void ZLFP10Controller::DeFlutter()
           if (FCUSettings.RoomTemp < lastTempSetting)
           {
               SetLevels[MINFANSPEED]--;
-              DebugStream->println("Adjusting level 0 to ");
-              DebugStream->println(SetLevels[MINFANSPEED]);
+              DebugStream->print("Adjusting level 0 to ");
+              DebugStream->print(SetLevels[MINFANSPEED]);
+              DebugStream->println();
               return;
           }
       }
@@ -277,10 +282,11 @@ void ZLFP10Controller::DeFlutter()
         if(FCUSettings.RoomTemp> lastTempSetting )
         {
           SetLevels[MAXFANSPEED]++;
-          DebugStream->println("Adjusting level ");
-          DebugStream->println(MAXFANSPEED);
-          DebugStream->println(" to ");
-          DebugStream->println(SetLevels[MAXFANSPEED]);
+          DebugStream->print("Adjusting level ");
+          DebugStream->print(MAXFANSPEED);
+          DebugStream->print(" to ");
+          DebugStream->print(SetLevels[MAXFANSPEED]);
+          DebugStream->println();
           return;
         }
     }
@@ -288,20 +294,25 @@ void ZLFP10Controller::DeFlutter()
     {
       // 
       int setting =lastSpeedSetting;
-      DebugStream->println(" Setting=");
-      DebugStream->println(setting);
-      DebugStream->println(" Level=");
-      DebugStream->println(SetLevels[setting]);
-      DebugStream->println(" Next Level=");
-      DebugStream->println(SetLevels[setting+1]);
+      DebugStream->print(" Setting=");
+      DebugStream->print(setting);
+      DebugStream->print(" Level=");
+      DebugStream->print(SetLevels[setting]);
+      DebugStream->print(" Next Level=");
+      DebugStream->print(SetLevels[setting+1]);
 
       if(SetLevels[setting+1]-SetLevels[setting]>1)
       {
         SetLevels[setting]++;
-          DebugStream->println("Adjusting level ");
-          DebugStream->println(setting);
-          DebugStream->println(" to ");
-          DebugStream->println(SetLevels[setting]);
+          DebugStream->print("Adjusting level ");
+          DebugStream->print(setting);
+          DebugStream->print(" to ");
+          DebugStream->print(SetLevels[setting]);
+          DebugStream->println();
+      }
+      else
+      {
+          DebugStream->println("Unable to deflutter.");
       }
     }
     else
@@ -311,10 +322,14 @@ void ZLFP10Controller::DeFlutter()
       if(SetLevels[setting]-SetLevels[setting-1]>1)
       {
         SetLevels[setting]--;
-          DebugStream->println("Adjusting level ");
-          DebugStream->println(setting);
-          DebugStream->println(" to ");
-          DebugStream->println(SetLevels[setting]);
+          DebugStream->print("Adjusting level ");
+          DebugStream->print(setting);
+          DebugStream->print(" to ");
+          DebugStream->print(SetLevels[setting]);
+      }
+      else
+      {
+          DebugStream->println("Unable to deflutter.");
       }
 
     }
