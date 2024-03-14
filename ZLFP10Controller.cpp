@@ -44,10 +44,16 @@ void ZLFP10Controller::ReadSettings() {
       uint8_t  result;
     
 
-
+     
     result = node.readHoldingRegisters( HOLDINGFIRST, HOLDINGCOUNT);
+    if (result != 0)
+    {
+        delay(500);
+        result = node.readHoldingRegisters(HOLDINGFIRST, HOLDINGCOUNT);
+    }
     if(result !=0)
     {
+        
       return;
     }
     int x;
@@ -59,8 +65,14 @@ void ZLFP10Controller::ReadSettings() {
     delay(150);  // need a little bit of time between requests
 
     result = node.readInputRegisters( INPUTFIRST, INPUTCOUNT);
+    if (result != 0)
+    {
+        delay(500);
+        result = node.readInputRegisters(INPUTFIRST, INPUTCOUNT);
+    }
     if(result !=0)
     {
+        Serial.println("Error reading Input registers");
       return;
     }
 
@@ -123,12 +135,27 @@ void ZLFP10Controller::Calibrate(bool isHeating, int FCUSetTemp)
   //So figure out those three and then substract two from one to get zero, and add two to three to get four
   
     isHeat = isHeating;
-
+    lastTempSetting = 0; // have to do this to prevent defluttering
   short LevelL, LevelH;   // input levels for the extremes, low and high
   short ReadingL, ReadingH; // room temperature readings we get back
   LevelL= 165-15; // set for 15 C
   LevelH=165-30;  // set for 30 C
 
+  /*
+  {
+      int x;
+      for (x = 1; x < 155; x++)
+      {
+          analogWrite(TempReaderPin, x);
+          delay(1000);
+          ReadSettings();
+          Serial.println();
+          Serial.print("setting=");
+          Serial.print(x);
+          Serial.print(" reading=");
+          Serial.print(FCUSettings.RoomTemp);
+      }
+  }*/
   //check out low end
   analogWrite(TempReaderPin, LevelL);
   delay(1000);
@@ -147,7 +174,7 @@ void ZLFP10Controller::Calibrate(bool isHeating, int FCUSetTemp)
   DebugStream->print(LevelH); //135
   DebugStream->print(" ");
   DebugStream->print(ReadingH); //300 30c
-  DebugStream->println(" ");
+
 
   // (LevelH-TargetLevel)/(LevelH-LevlL)= (ReadingH-TargetReading)/(ReadingH-ReadingL); or
   // TargetLevel= LevelH - (LevelH-LevelL)*(ReadingH-TargetReading)/(ReadingH-ReadingL)
