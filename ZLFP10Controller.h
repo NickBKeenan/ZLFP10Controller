@@ -28,8 +28,19 @@ struct settingsHolder {
     short FanSetting ;
     short FanRPM ;
     short valveOpen;
+    short FanFault;
 
 };
+
+class debugStream : public Stream
+{
+public:
+    virtual void BlinkEm();
+};
+    void SetStatus(int newStatus);
+    void Warning(int WarningLevel);
+    void FatalError(int ErrorLevel);
+
 
 class ZLFP10Controller
 {
@@ -49,7 +60,7 @@ private:
     bool isHeat; //used for deflutter
 
     short SetLevels[5]; // the digital output level for each fan speed, set in Calibrate(); 
-    Stream *DebugStream;
+    Print *DebugStream;
 
 public:
     
@@ -61,6 +72,7 @@ public:
     void Calibrate(bool isheating, int FCUSetTemp);   // calibrate temperature spoofing
     void DeFlutter();  // if temperature fluttering is detected, revisit the calibration
     void SetDebugOutput(Stream* pDebug);
+    void SetOnOff(short isOn);  // turn on and off
 
 };
 

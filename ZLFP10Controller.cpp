@@ -3,11 +3,18 @@
 
 #include <ZLFP10Controller.h>
 
+#define ERROR_CANT_CALIBRATE 1
+
+#define WARNING_READ_HOLDING 1
+#define WARNING_READ_INPUT 2
 
 
 void ZLFP10Controller::setTempReader(uint8_t pTempReaderPin)
 {
   TempReaderPin= pTempReaderPin;
+
+  pinMode(TempReaderPin, OUTPUT);
+  analogWrite(TempReaderPin, 134); // write a random value to silence the alarm
 }
 void ZLFP10Controller::setSerial(SoftwareSerial &pswSerial, uint8_t pRS485DEPin,uint8_t pRS485REPin)
 {
@@ -27,8 +34,6 @@ void ZLFP10Controller::setup()
 
     
   
-     pinMode(TempReaderPin, OUTPUT);
-     analogWrite(TempReaderPin, 134); // write a random value to silence the alarm
 }
 
 void ZLFP10Controller::ReadSettings() {
@@ -48,12 +53,14 @@ void ZLFP10Controller::ReadSettings() {
     result = node.readHoldingRegisters( HOLDINGFIRST, HOLDINGCOUNT);
     if (result != 0)
     {
-        delay(500);
+        Warning(WARNING_READ_HOLDING);
+        
         result = node.readHoldingRegisters(HOLDINGFIRST, HOLDINGCOUNT);
     }
     if(result !=0)
     {
-        
+        DebugStream->println("Error reading holding registers");
+        Warning(WARNING_READ_HOLDING);
       return;
     }
     int x;
@@ -67,12 +74,13 @@ void ZLFP10Controller::ReadSettings() {
     result = node.readInputRegisters( INPUTFIRST, INPUTCOUNT);
     if (result != 0)
     {
-        delay(500);
+        Warning(WARNING_READ_INPUT);
         result = node.readInputRegisters(INPUTFIRST, INPUTCOUNT);
     }
     if(result !=0)
     {
-        Serial.println("Error reading Input registers");
+        DebugStream->println("Error reading Input registers");
+        Warning(WARNING_READ_INPUT);
       return;
     }
 
@@ -92,6 +100,7 @@ void ZLFP10Controller::ReadSettings() {
     FCUSettings.FanSetting = inputData[2];
     FCUSettings.FanRPM= inputData[3];
     FCUSettings.valveOpen = inputData[4];
+    FCUSettings.FanFault = inputData[7];
 
 // fan setting is holdingData[2];
 
@@ -104,7 +113,16 @@ void ZLFP10Controller::ReadSettings() {
     }
 
 }
+  // turn on and off
+void ZLFP10Controller::SetOnOff(short isOn)
+{
+    uint8_t retval;
+    node.setTransmitBuffer(0, isOn);
+    retval=node.writeMultipleRegisters(HOLDINGFIRST, 1);
 
+
+
+}
 
 void ZLFP10Controller::SetFanSpeed(int fanspeed, int targettemp)
 {
@@ -138,13 +156,13 @@ void ZLFP10Controller::Calibrate(bool isHeating, int FCUSetTemp)
     lastTempSetting = 0; // have to do this to prevent defluttering
   short LevelL, LevelH;   // input levels for the extremes, low and high
   short ReadingL, ReadingH; // room temperature readings we get back
-  LevelL= 165-15; // set for 15 C
-  LevelH=165-30;  // set for 30 C
+  LevelL= 135; // set for 15 C
+  LevelH=120;  // set for 30 C
 
-  /*
-  {
+  int iterator = 0;
+  {/*
       int x;
-      for (x = 1; x < 155; x++)
+      for (x = 1; x < 255; x+=1)
       {
           analogWrite(TempReaderPin, x);
           delay(1000);
@@ -155,14 +173,38 @@ void ZLFP10Controller::Calibrate(bool isHeating, int FCUSetTemp)
           Serial.print(" reading=");
           Serial.print(FCUSettings.RoomTemp);
       }
-  }*/
+      while (1);
+      analogWrite(TempReaderPin, 1);
+      delay(1000);
+      ReadSettings();
+      Serial.println();
+      Serial.print("setting=");
+      Serial.print(1);
+      Serial.print(" reading=");
+      Serial.print(FCUSettings.RoomTemp);
+      delay(10000);
+      analogWrite(TempReaderPin, 254);
+      delay(1000);
+      ReadSettings();
+      Serial.println();
+      Serial.print("setting=");
+      Serial.print(254);
+      Serial.print(" reading=");
+      Serial.print(FCUSettings.RoomTemp);
+
+      while (1);
+      */
+  }
+
   //check out low end
+  SetStatus((iterator++ % 4) + 1);
   analogWrite(TempReaderPin, LevelL);
   delay(1000);
   ReadSettings();
   ReadingL=FCUSettings.RoomTemp;
 
   // check out high end
+  SetStatus((iterator++ % 4) + 1);
   analogWrite(TempReaderPin, LevelH);
   delay(1000);
   ReadSettings();
@@ -215,6 +257,7 @@ void ZLFP10Controller::Calibrate(bool isHeating, int FCUSetTemp)
     for(y=1; y< 4; y++)
     {
       short reading;
+      
       DebugStream->print(SetLevels[y]);
       analogWrite(TempReaderPin, SetLevels[y]);
       delay(1000);
@@ -223,6 +266,7 @@ void ZLFP10Controller::Calibrate(bool isHeating, int FCUSetTemp)
       DebugStream->print(" ");
       DebugStream->print(reading);
       DebugStream->print(" . ");
+      SetStatus((iterator++ % 4)+1);
 
       if(reading != temps[y-1] )
       {// need adjustment
@@ -270,6 +314,8 @@ void ZLFP10Controller::Calibrate(bool isHeating, int FCUSetTemp)
       DebugStream->println("Unable to calibrate");
     // trigger a P5 error
     analogWrite(TempReaderPin,0);
+    FatalError(ERROR_CANT_CALIBRATE);
+
     while(1);
   }
   
