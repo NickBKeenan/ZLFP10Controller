@@ -4,6 +4,7 @@
 #include <ModbusMaster.h>
 #include <SoftwareSerial.h>
 
+
 // Set up a new SoftwareSerial object
 #define MAXFANSPEED 4
 #define MINFANSPEED 0  //  0=off
@@ -26,9 +27,11 @@ struct settingsHolder {
     short RoomTemp ;
     short coilTemp ;
     short FanSetting ;
+    short FanModeSetting;
     short FanRPM ;
     short valveOpen;
     short FanFault;
+    short HeatingWaterMinTemp;
 
 };
 
@@ -37,9 +40,6 @@ class debugStream : public Stream
 public:
     virtual void BlinkEm();
 };
-    void SetStatus(int newStatus);
-    void Warning(int WarningLevel);
-    void FatalError(int ErrorLevel);
 
 
 class ZLFP10Controller
@@ -47,9 +47,10 @@ class ZLFP10Controller
 
     ModbusMaster node;
 
-    int TempReaderPin; // PWm pin that connects to FCU temp reader
+    int RoomTempPin; // PWm pin that connects to FCU room temp reader
+    int CoilTempPin; //digital pin that connects to FCU coil temp 
     unsigned long nextAdjustmentTime = 0; //don't deflutter more than once every three minutes
-
+    
   
 public:
     settingsHolder FCUSettings;
@@ -57,23 +58,30 @@ public:
 private:
     short lastTempSetting=0; // used for deflutter
     int lastSpeedSetting = 0; // used for deflutter
-    bool isHeat; //used for deflutter
+
 
     short SetLevels[5]; // the digital output level for each fan speed, set in Calibrate(); 
     Print *DebugStream;
-
-public:
     
-    void setSerial(SoftwareSerial &pswSerial, uint8_t pRS485DEPin,uint8_t pRS485REPin);
-    void setTempReader(uint8_t pTempReaderPin);
-    void setup();
+public:
+    // one of these two is used
+    void setSoftwareSerial(SoftwareSerial &pswSerial, uint8_t pRS485DEPin,uint8_t pRS485REPin);
+    void setHardwareSerial(HardwareSerial& pswSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin);
+
+    void setRoomTempPin(uint8_t pRoomTempPin);
+    void setCoilTempPin(uint8_t pCoilTempPin);  
+    
     void ReadSettings(); // read from onboard settings
-    void SetFanSpeed(int fanspeed,  int targettemp); // write out to temperature spoof
-    void Calibrate(bool isheating, int FCUSetTemp);   // calibrate temperature spoofing
+    void SetFanSpeed(int fanspeed); // write out to temperature spoof
+    void Calibrate();   // calibrate temperature spoofing
     void DeFlutter();  // if temperature fluttering is detected, revisit the calibration
     void SetDebugOutput(Stream* pDebug);
     void SetOnOff(short isOn);  // turn on and off
-
+    void SetMode(short newMode);
+    void SetFanModeSetting(short newSetting);
+    void SetSetpoint(short newSetpoint);
+    void SetHoldingRegister(short RegisterID, short newValue);
+    bool Cooling();
 };
 
 #endif
