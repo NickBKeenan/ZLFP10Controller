@@ -1,7 +1,8 @@
 #ifndef ZLFP10Controller_h
 #define ZLFP10Controller_h
 
-#include <ModbusMaster.h>
+#include <ModbusClient.h>
+#include <ModbusServer.h>
 #include <SoftwareSerial.h>
 
 
@@ -45,7 +46,8 @@ public:
 class ZLFP10Controller
 {
 
-    ModbusMaster node;
+    ModbusClient client;
+    ModbusServer *pserver;
 
     int RoomTempPin; // PWm pin that connects to FCU room temp reader
     int CoilTempPin; //digital pin that connects to FCU coil temp 
@@ -65,8 +67,11 @@ private:
     
 public:
     // one of these two is used
-    void setSoftwareSerial(SoftwareSerial &pswSerial, uint8_t pRS485DEPin,uint8_t pRS485REPin);
-    void setHardwareSerial(HardwareSerial& pswSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin);
+    void setClientSoftwareSerial(SoftwareSerial &pswSerial, uint8_t pRS485DEPin,uint8_t pRS485REPin, uint8_t ModbusID);
+    void setClientHardwareSerial(HardwareSerial& pswSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin, uint8_t ModbusID);
+    // one of these two is used
+    void setServerSoftwareSerial(SoftwareSerial& pswSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin, uint8_t ModbusID, ModbusServer* p_pServer);
+    void setServerHardwareSerial(HardwareSerial& pswSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin, uint8_t ModbusID, ModbusServer* p_pServer);
 
     void setRoomTempPin(uint8_t pRoomTempPin);
     void setCoilTempPin(uint8_t pCoilTempPin);  
@@ -82,6 +87,8 @@ public:
     void SetSetpoint(short newSetpoint);
     void SetHoldingRegister(short RegisterID, short newValue);
     bool Cooling();
+    void ServiceAnyRequests(); // called when a server needs something from the client
+    ModbusClient* GetClient(); // returns a pointer to the client object
 };
 
 #endif

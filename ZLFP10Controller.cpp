@@ -27,25 +27,54 @@ void ZLFP10Controller::setCoilTempPin(uint8_t pCoilTempPin)
     
 }
 
-void ZLFP10Controller::setHardwareSerial(HardwareSerial& phwSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin)
+void ZLFP10Controller::setClientHardwareSerial(HardwareSerial& phwSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin, uint8_t ModbusID)
 {
     phwSerial.begin(9600);
 
-    node.begin(15, phwSerial);
+    client.begin( ModbusID, phwSerial);
 
-    node.SetPins(pRS485DEPin, pRS485REPin);
+    client.SetPins(pRS485DEPin, pRS485REPin);
 
 
 
 }
 
-void ZLFP10Controller::setSoftwareSerial(SoftwareSerial &pswSerial, uint8_t pRS485DEPin,uint8_t pRS485REPin)
+void ZLFP10Controller::setClientSoftwareSerial(SoftwareSerial &pswSerial, uint8_t pRS485DEPin,uint8_t pRS485REPin, uint8_t ModbusID)
 {
     pswSerial.begin(9600);
 
-    node.begin(15, pswSerial);
+    client.begin(ModbusID, pswSerial);
 
-  node.SetPins(pRS485DEPin, pRS485REPin);
+  client.SetPins(pRS485DEPin, pRS485REPin);
+
+
+
+}
+
+void ZLFP10Controller::setServerHardwareSerial(HardwareSerial& phwSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin, uint8_t ModbusID, ModbusServer * p_pServer)
+{
+    phwSerial.begin(9600);
+
+    pserver = p_pServer;
+
+    pserver->begin(ModbusID, phwSerial);
+
+    pserver->SetPins(pRS485DEPin, pRS485REPin);
+
+
+
+}
+
+void ZLFP10Controller::setServerSoftwareSerial(SoftwareSerial& pswSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin, uint8_t ModbusID, ModbusServer* p_pServer)
+{
+    
+    pswSerial.begin(9600);
+
+    pserver = p_pServer;
+
+    pserver->begin( ModbusID, pswSerial);
+
+    pserver->SetPins(pRS485DEPin, pRS485REPin);
 
 
 
@@ -65,12 +94,12 @@ void ZLFP10Controller::ReadSettings() {
     
 
      
-    result = node.readHoldingRegisters( HOLDINGFIRST, HOLDINGCOUNT);
+    result = client.readHoldingRegisters( HOLDINGFIRST, HOLDINGCOUNT);
     if (result != 0)
     {
         theLEDStatusStrip.Warning(WARNING_READ_HOLDING);
         
-        result = node.readHoldingRegisters(HOLDINGFIRST, HOLDINGCOUNT);
+        result = client.readHoldingRegisters(HOLDINGFIRST, HOLDINGCOUNT);
     }
     if(result !=0)
     {
@@ -80,7 +109,7 @@ void ZLFP10Controller::ReadSettings() {
     }
     int x;
     for (x = 0; x < HOLDINGCOUNT; x++) {
-              holdingData[x] = node.getResponseBuffer(x);
+              holdingData[x] = client.ResponseBufferGetAt(x);
 
 /*              DebugStream->println();
               DebugStream->print("Holdingdata ");
@@ -91,11 +120,11 @@ void ZLFP10Controller::ReadSettings() {
     }
     delay(150);  // need a little bit of time between requests
 
-    result = node.readInputRegisters( INPUTFIRST, INPUTCOUNT);
+    result = client.readInputRegisters( INPUTFIRST, INPUTCOUNT);
     if (result != 0)
     {
         theLEDStatusStrip.Warning(WARNING_READ_INPUT);
-        result = node.readInputRegisters(INPUTFIRST, INPUTCOUNT);
+        result = client.readInputRegisters(INPUTFIRST, INPUTCOUNT);
     }
     if(result !=0)
     {
@@ -105,7 +134,7 @@ void ZLFP10Controller::ReadSettings() {
     }
 
     for (x = 0; x < INPUTCOUNT; x++) {
-        inputData[x] = node.getResponseBuffer(x);
+        inputData[x] = client.ResponseBufferGetAt(x);
     }
 
     
@@ -139,8 +168,8 @@ void ZLFP10Controller::ReadSettings() {
 void ZLFP10Controller::SetHoldingRegister(short RegisterID, short newValue)
 {
     uint8_t retval;
-    node.setTransmitBuffer(0, newValue);
-    retval = node.writeMultipleRegisters(HOLDINGFIRST+RegisterID, 1);
+    client.TransmitBufferPutAt(0, newValue);
+    retval = client.writeMultipleRegisters(HOLDINGFIRST+RegisterID, 1);
 
 }
   // turn on and off
@@ -259,24 +288,26 @@ void ZLFP10Controller::Calibrate()
   LevelH=120;  // set for 30 C
 
   int iterator = 0;
-  {
-     /* int x;
-      for (x = 105; x < 255; x+=1)
+  {/*
+      int x;
+      int lastread = 99;
+      for (x = 105; x < 255&& lastread > 9; x+=1)
       {
           analogWrite(RoomTempPin, x);
-          delay(10000);
+          delay(500);
           ReadSettings();
           Serial.println();
           Serial.print("setting=");
           Serial.print(x);
           Serial.print(" reading=");
           Serial.print(FCUSettings.RoomTemp);
+          lastread = FCUSettings.RoomTemp;
           Serial.print(" Fanspeed=");
           Serial.print(FCUSettings.FanSetting);
           Serial.print(" FanRPM=");
           Serial.print(FCUSettings.FanRPM);
       }
-      while (1);
+      while (1);/*
       analogWrite(RoomTempPin, 1);
       delay(1000);
       ReadSettings();
@@ -640,4 +671,16 @@ bool ZLFP10Controller::Cooling()
     {
         return false;
     }
+}
+void ZLFP10Controller::ServiceAnyRequests()
+{
+    pserver->ServiceAnyRequests();
+    
+ 
+    
+}
+
+ModbusClient* ZLFP10Controller::GetClient()
+{
+    return &client;
 }
