@@ -32,6 +32,8 @@ struct settingsHolder {
     short FanRPM ;
     short valveOpen;
     short FanFault;
+    short TempFault;
+    short CoilTempFault;
     short HeatingWaterMinTemp;
 
 };
