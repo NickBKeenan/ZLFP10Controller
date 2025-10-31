@@ -20,16 +20,16 @@
 
 struct settingsHolder {
     short Onoff;
-    short Mode ;
+    short Mode;
     short AutoCoolingSetpoint;
     short AutoHeatingSetpoint;
-    short HeatSetpoint ;
-    short CoolSetpoint ;
-    short RoomTemp ;
-    short coilTemp ;
-    short FanSetting ;
+    short HeatSetpoint;
+    short CoolSetpoint;
+    short RoomTemp;
+    short coilTemp;
+    short FanSetting;
     short FanModeSetting;
-    short FanRPM ;
+    short FanRPM;
     short valveOpen;
     short FanFault;
     short HeatingWaterMinTemp;
@@ -47,35 +47,41 @@ class ZLFP10Controller
 {
 
     ModbusClient client;
-    ModbusServer *pserver;
+    ModbusServer* pserver;
 
     int RoomTempPin; // PWm pin that connects to FCU room temp reader
     int CoilTempPin; //digital pin that connects to FCU coil temp 
     unsigned long nextAdjustmentTime = 0; //don't deflutter more than once every three minutes
-    
-  
+
+
 public:
     settingsHolder FCUSettings;
     int lastTempPin;
 private:
-    short lastTempSetting=0; // used for deflutter
+    short lastTempSetting = 0; // used for deflutter
     int lastSpeedSetting = 0; // used for deflutter
 
 
     short SetLevels[5]; // the digital output level for each fan speed, set in Calibrate(); 
-    Print *DebugStream;
+    Print* DebugStream;
     
+    void AdjustCalibrationData(); // called when fluttering was detected and corrected, writes back to EEPROM
+    static const int  MaxTemp = 30;
+    static const int  MinTemp = 10;
+    int CalibrationInfo[MaxTemp - MinTemp + 1];
+
 public:
     // one of these two is used
-    void setClientSoftwareSerial(SoftwareSerial &pswSerial, uint8_t pRS485DEPin,uint8_t pRS485REPin, uint8_t ModbusID);
+    void setClientSoftwareSerial(SoftwareSerial& pswSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin, uint8_t ModbusID);
     void setClientHardwareSerial(HardwareSerial& pswSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin, uint8_t ModbusID);
     // one of these two is used
     void setServerSoftwareSerial(SoftwareSerial& pswSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin, uint8_t ModbusID, ModbusServer* p_pServer);
     void setServerHardwareSerial(HardwareSerial& pswSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin, uint8_t ModbusID, ModbusServer* p_pServer);
 
     void setRoomTempPin(uint8_t pRoomTempPin);
-    void setCoilTempPin(uint8_t pCoilTempPin);  
-    
+    void setCoilTempPin(uint8_t pCoilTempPin);
+    void GetCalibrationInfo();
+
     void ReadSettings(); // read from onboard settings
     void SetFanSpeed(int fanspeed); // write out to temperature spoof
     void Calibrate();   // calibrate temperature spoofing
