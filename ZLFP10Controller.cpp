@@ -3,7 +3,7 @@
 
 
 #include <ZLFP10Controller.h>
-#include <LEDStatusStrip.h>
+#include "LEDStatusStrip.h"
 
 #define ERROR_CANT_CALIBRATE 1
 
@@ -35,9 +35,6 @@ void ZLFP10Controller::setClientHardwareSerial(HardwareSerial& phwSerial, uint8_
     client.begin(ModbusID, phwSerial);
 
     client.SetPins(pRS485DEPin, pRS485REPin);
-
-
-
 }
 
 void ZLFP10Controller::setClientSoftwareSerial(SoftwareSerial& pswSerial, uint8_t pRS485DEPin, uint8_t pRS485REPin, uint8_t ModbusID)
@@ -92,10 +89,9 @@ void ZLFP10Controller::ReadSettings() {
     short holdingData[HOLDINGCOUNT];
     short inputData[INPUTCOUNT];
     uint8_t  result;
-
-
-
-    result = client.readHoldingRegisters(HOLDINGFIRST, HOLDINGCOUNT);
+     
+    result = client.readHoldingRegisters( HOLDINGFIRST, HOLDINGCOUNT);
+    DebugStream->println(result);
     if (result != 0)
     {
         theLEDStatusStrip.Warning(WARNING_READ_HOLDING);
@@ -153,6 +149,8 @@ void ZLFP10Controller::ReadSettings() {
     FCUSettings.FanRPM = inputData[3];
     FCUSettings.valveOpen = inputData[4];
     FCUSettings.FanFault = inputData[7];
+    FCUSettings.TempFault = inputData[8];  // Register 46809
+    FCUSettings.CoilTempFault = inputData[9];  // Register 46810
 
 
 
